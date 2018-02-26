@@ -37,6 +37,15 @@
     (apply safe-println csv-file $))
   1)
 
+(defn print-parentof-to-csv
+  [csv-file line]
+  (as-> line x
+    (map x [:uuid  :generation :parent-uuids])
+    (concat x ["Parent of"])
+    (apply safe-println csv-file x))
+    1)
+
+
 (defn edn->csv-sequential [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
     (safe-println out-file individuals-header-line)
@@ -46,6 +55,7 @@
       (drop 1)
       (map (partial edn/read-string {:default individual-reader}))
       (map (partial print-individual-to-csv out-file))
+      (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
 
