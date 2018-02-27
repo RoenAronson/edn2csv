@@ -37,6 +37,14 @@
     (apply safe-println csv-file $))
   1)
 
+(defn print-parentof-to-csv
+  [csv-file line]
+  (as-> line x
+    (map x [:uuid  :generation :parent-uuids])
+    (concat x ["Parent of"])
+    (apply safe-println csv-file x))
+    1)
+
 (defn edn->csv-sequential [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
     (safe-println out-file individuals-header-line)
@@ -45,7 +53,7 @@
       ; Skip the first line because it's not an individual
       (drop 1)
       (map (partial edn/read-string {:default individual-reader}))
-      (map (partial print-individual-to-csv out-file))
+      (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
 
@@ -74,7 +82,7 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-individual-to-csv out-file))
+      (r/map (partial print-parentof-to-csv out-file))
       (r/fold +)
       )))
 
