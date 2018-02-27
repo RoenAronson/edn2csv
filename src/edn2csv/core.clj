@@ -40,10 +40,20 @@
 (defn print-parentof-to-csv
   [csv-file line]
   (as-> line x
-    (map x [:parent-uuids  :genetic-operator :uuid])
+    (if-not (= nil :parent-uuids)
+    (doexit
+    (map x [:uuid :generation :location])
+    (concat x ["Individual"])
+    (apply safe-println csv-file x)
+    )
+    (do
+    (map x [:parent-uuids :genetic-operators :uuid])
     (concat x ["PARENT_OF"])
-    (apply safe-println csv-file x))
-    1)
+    (apply safeprintln csv-file x)))
+    )
+  1)
+
+
 
 
 (defn edn->csv-sequential [edn-file csv-file]
@@ -83,7 +93,7 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-individual-to-csv out-file))
+      (r/map (partial print-parentof-to-csv out-file))
       (r/fold +)
       )))
 
