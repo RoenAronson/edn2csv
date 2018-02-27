@@ -40,9 +40,11 @@
 (defn print-parentof-to-csv
   [csv-file line]
   (as-> line x
-    (map x [:uuid  :generation :parent-uuids])
-    (concat x ["Parent of"])
-    (apply safe-println csv-file x))
+    (if (not-empty :parent-uuids)
+      (map x [(first (next :parent-uuids)) :genetic-operator :uuid])
+      (concat x ["PARENT_OF"])
+      (apply safe-println csv-file x))
+    ))
     1)
 
 (defn edn->csv-sequential [edn-file csv-file]
