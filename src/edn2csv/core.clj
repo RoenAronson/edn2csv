@@ -40,8 +40,8 @@
 (defn print-parentof-to-csv
   [csv-file line]
   (as-> line x
-    (map x [:uuid  :generation :parent-uuids])
-    (concat x ["Parent of"])
+    (map x [:parent-uuids  :genetic-operator :uuid])
+    (concat x ["PARENT_OF"])
     (apply safe-println csv-file x))
     1)
 
@@ -55,7 +55,6 @@
       (drop 1)
       (map (partial edn/read-string {:default individual-reader}))
       (map (partial print-individual-to-csv out-file))
-      (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
 
