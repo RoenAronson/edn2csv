@@ -39,21 +39,15 @@
 
 (defn print-parentof-to-csv
   [csv-file line]
-  (as-> line x
-    (if-not (= nil :parent-uuids)
-    (doexit
-    (map x [:uuid :generation :location])
-    (concat x ["Individual"])
-    (apply safe-println csv-file x)
-    )
-    (do
-    (map x [:parent-uuids :genetic-operators :uuid])
-    (concat x ["PARENT_OF"])
-    (apply safeprintln csv-file x)))
-    )
+  (as-> line $
+    (map $ [:parent-uuids :genetic-operators :uuid])
+    (concat $ ["PARENT_OF"])
+    (apply safe-println csv-file $))
   1)
 
 
+; I'm thinking of using a for loop to write multiple files for each iteration of the code.
+; I should be able to write something like for
 
 
 (defn edn->csv-sequential [edn-file csv-file]
@@ -64,7 +58,8 @@
       ; Skip the first line because it's not an individual
       (drop 1)
       (map (partial edn/read-string {:default individual-reader}))
-      (map (partial print-individual-to-csv out-file))
+      (filter #(pos? (:generation %)) )
+      (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
 
@@ -93,7 +88,7 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-parentof-to-csv out-file))
+      (r/map (partial print-individual-to-csv out-file))
       (r/fold +)
       )))
 
