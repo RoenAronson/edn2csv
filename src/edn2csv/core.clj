@@ -7,6 +7,12 @@
            [me.raynes.fs :as fs])
   (:gen-class))
 
+; Creates a UUID
+(defn uuid [] (str (java.util.UUID/randomUUID)))
+
+; An agent for the semantics set
+(def semantics_set (agent #{}))
+
 ; The header line for the Individuals CSV file
 (def individuals-header-line "UUID:ID(Individual),Generation:int,Location:int,:LABEL")
 
@@ -46,8 +52,16 @@
         (map x [:single-parent :genetic-operators :uuid])
         (concat x ["PARENT_OF"])
         (apply safe-println csv-file x))) parents))
-  1))
+    1))
 
+(defn add-semantics-to-set
+  [csv-file line]
+  (as-> line $
+    (map $ [:total-error :errors])
+    (conj $ (uuid))
+    (concat $ ["Semantics"])
+    (apply safe-println csv-file $))
+    1)
 
 (defn edn->csv-sequential [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
@@ -60,6 +74,7 @@
       (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
+individual-reader
 
 (defn edn->csv-pmap [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
@@ -86,7 +101,7 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-parentof-to-csv out-file))
+      (r/map (partial add-semantics-to-set out-file))
       (r/fold +)
       )))
 
