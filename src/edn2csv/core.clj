@@ -57,7 +57,7 @@
 (defn add-semantics-to-set
   [csv-file line]
   (as-> line $
-    (map $ [:total-error :errors])
+    (list $ [:total-error :errors])
     (conj $ (uuid))
     (concat $ ["Semantics"])
     (apply safe-println csv-file $))
