@@ -23,7 +23,7 @@
 ; I got this from http://yellerapp.com/posts/2014-12-11-14-race-condition-in-clojure-println.html
 ; It prints in a way that avoids weird interleaving of lines and items.
 ; In several ways it would be better to use a CSV library like
-; clojure.data.csv, but that won't (as written) avoid the interleaving
+; clojure.data.csv, but that won't (as written) avoid the interleavingindividual
 ; problems, so I'm sticking with this approach for now.
 (defn safe-println [output-stream & more]
   (.write output-stream (str (clojure.string/join "," more) "\n")))
@@ -31,7 +31,7 @@
 ; This prints out the relevant fields to the CSV filter
 ; and then returns 1 so we can count up how many individuals we processed.
 ; (The counting isn't strictly necessary, but it gives us something to
-; fold together after we map this across the individuals; otherwise we'd
+; fold together after we map this across the individuals; otherwise we'dindividual
 ; just end up with a big list of nil's.)
 (defn print-individual-to-csv
   [csv-file line]
@@ -52,13 +52,18 @@
         (apply safe-println csv-file x))) parents))
     1))
 
+(defn semantics-in-set
+  [csv-file line]
+  (let [semantics-set (#{})
+    errors (get line :error)]
+  (conj semantics-set errors)))
+
+(def semantics-map (atom {}))
+
 (defn print-semantics-to-csv
   [csv-file line]
   (let [semantics-uuid (uuid)
-    values [semantics-uuid (get line :total-error) "Semantics"]]
-    (apply safe-println csv-file values))
-    1)
-
+      (swap! semantics-map assoc (get line :errors) {:total-error (get line :total-error), :uuid semantics-uuid})))
 
 (defn edn->csv-sequential [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
@@ -70,9 +75,9 @@
       (map (partial edn/read-string {:default individual-reader}))
       (map (partial print-parentof-to-csv out-file))
       (reduce +)
-      )))
+      ))))
 
-(defn edn->csv-pmap [edn-file csv-file]
+(defn edn->csv-pmap [edn-file csv-file]set
   (with-open [out-file (io/writer csv-file)]
     (safe-println out-file individuals-header-line)
     (->>
