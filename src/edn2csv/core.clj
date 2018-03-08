@@ -71,7 +71,6 @@
       (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
-individual-reader
 
 (defn edn->csv-pmap [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
