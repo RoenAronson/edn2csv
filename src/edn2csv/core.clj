@@ -10,11 +10,9 @@
 ; Creates a UUID
 (defn uuid [] (str (java.util.UUID/randomUUID)))
 
-; An agent for the semantics set
-(def semantics_set (agent #{}))
-
 ; The header line for the Individuals CSV file
 (def individuals-header-line "UUID:ID(Individual),Generation:int,Location:int,:LABEL")
+(def semantics-header-line "UUID:ID(Semantics),TotalError:int,:LABEL")
 
 ; Ignores (i.e., returns nil) any EDN entries that don't have the
 ; 'clojure/individual tag.
@@ -54,14 +52,13 @@
         (apply safe-println csv-file x))) parents))
     1))
 
-(defn add-semantics-to-set
+(defn print-semantics-to-csv
   [csv-file line]
-  (as-> line $
-    (list $ [:total-error :errors])
-    (conj $ (uuid))
-    (concat $ ["Semantics"])
-    (apply safe-println csv-file $))
+  (let [semantics-uuid (uuid)
+    values [semantics-uuid (get line :total-error) "Semantics"]]
+    (apply safe-println csv-file values))
     1)
+
 
 (defn edn->csv-sequential [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
@@ -101,7 +98,7 @@ individual-reader
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial add-semantics-to-set out-file))
+      (r/map (partial print-semantics-to-csv out-file))
       (r/fold +)
       )))
 
