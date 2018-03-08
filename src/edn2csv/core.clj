@@ -7,8 +7,12 @@
            [me.raynes.fs :as fs])
   (:gen-class))
 
+; Creates a UUID
+(defn uuid [] (str (java.util.UUID/randomUUID)))
+
 ; The header line for the Individuals CSV file
 (def individuals-header-line "UUID:ID(Individual),Generation:int,Location:int,:LABEL")
+(def semantics-header-line "UUID:ID(Semantics),TotalError:int,:LABEL")
 
 ; Ignores (i.e., returns nil) any EDN entries that don't have the
 ; 'clojure/individual tag.
@@ -46,7 +50,14 @@
         (map x [:single-parent :genetic-operators :uuid])
         (concat x ["PARENT_OF"])
         (apply safe-println csv-file x))) parents))
-  1))
+    1))
+
+(defn print-semantics-to-csv
+  [csv-file line]
+  (let [semantics-uuid (uuid)
+    values [semantics-uuid (get line :total-error) "Semantics"]]
+    (apply safe-println csv-file values))
+    1)
 
 
 (defn edn->csv-sequential [edn-file csv-file]
@@ -60,6 +71,7 @@
       (map (partial print-parentof-to-csv out-file))
       (reduce +)
       )))
+individual-reader
 
 (defn edn->csv-pmap [edn-file csv-file]
   (with-open [out-file (io/writer csv-file)]
@@ -86,7 +98,7 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-parentof-to-csv out-file))
+      (r/map (partial print-semantics-to-csv out-file))
       (r/fold +)
       )))
 
