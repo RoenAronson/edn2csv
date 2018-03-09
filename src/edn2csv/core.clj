@@ -10,6 +10,9 @@
 ; The header line for the Individuals CSV file
 (def individuals-header-line "UUID:ID(Individual),Generation:int,Location:int,:LABEL")
 
+;Creates a UUID
+(defn uuid [] (str (java.util.UUID/randomUUID)))
+
 ; Ignores (i.e., returns nil) any EDN entries that don't have the
 ; 'clojure/individual tag.
 (defn individual-reader
@@ -47,6 +50,18 @@
         (concat x ["PARENT_OF"])
         (apply safe-println csv-file x))) parents))
   1))
+
+(def semantics-map (atom {}))
+
+(defn make-semantics-map
+  [line]
+  (let [create-uuid (uuid)]
+  (swap! semantics-map assoc (get line :errors) {:total-error (get line :total-error) :uuid create-uuid})))
+
+(defn print-semantics-to-csv
+  [csv-file line]
+  (make-semantics-map line)
+  1)
 
 
 (defn edn->csv-sequential [edn-file csv-file]
@@ -86,9 +101,12 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-parentof-to-csv out-file))
+      (r/map (partial print-semantics-to-csv out-file))
       (r/fold +)
-      )))
+      )
+      (doseq [item @semantics-map]
+        (apply safe-println out-file item))
+      ))
 
 (defn build-individual-csv-filename
   [edn-filename strategy]
