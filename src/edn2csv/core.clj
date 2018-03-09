@@ -84,7 +84,7 @@
       (map (partial edn/read-string {:default individual-reader}))
       (map (partial print-parentof-to-csv out-file))
       (reduce +)
-      ))))
+      )))
 
 (defn edn->csv-pmap [edn-file csv-file]set
   (with-open [out-file (io/writer csv-file)]
