@@ -13,6 +13,8 @@
 ; The header line for the Individuals CSV file
 (def individuals-header-line "UUID:ID(Individual),Generation:int,Location:int,:LABEL")
 (def semantics-header-line "UUID:ID(Semantics),TotalError:int,:LABEL")
+(def parentOf-header-line "UUID:ID(Parent),GeneticOperator:str,UUID:ID(Child),:LABEL")
+(def errors-header-line "UUID:ID(Error),ErrorValue:int,Position:int,:LABEL")
 
 ;Creates a UUID
 (defn uuid [] (str (java.util.UUID/randomUUID)))
@@ -44,7 +46,7 @@
     (apply safe-println csv-file $))
   1)
 
-(defn print-parentof-to-csv
+(defn print-parentOf-to-csv
   [csv-file line]
   (let [parents (get line :parent-uuids)]
     (dorun (map (fn [single-parent]
@@ -55,53 +57,98 @@
         (apply safe-println csv-file x))) parents))
     1))
 
-(defn semantics-in-set
-  [csv-file line]
-  (let [semantics-set (#{})
-    errors (get line :error)]
-  (conj semantics-set errors)))
 
 (def semantics-map (atom {}))
+(def errors-vector (atom []))
+(def errors-map (atom {}))
 
 (defn make-semantics-map
   [line]
   (let [create-uuid (uuid)]
   (swap! semantics-map assoc (get line :errors) {:total-error (get line :total-error) :uuid create-uuid})))
 
-(defn print-semantics-to-csv
-  [csv-file line]
+(defn add-semantics-to-map
+  [line]
   (make-semantics-map line)
   1)
 
+(defn print-semantics-to-csv
+  [semantics-file]
+  (doseq [item @semantics-map]
+    (apply safe-println semantics-file item))
+  )
 
-(defn edn->csv-sequential [edn-file csv-file]
-  (with-open [out-file (io/writer csv-file)]
-    (safe-println out-file individuals-header-line)
-    (->>
-      (line-seq (io/reader edn-file))
-      ; Skip the first line because it's not an individual
-      (drop 1)
-      (map (partial edn/read-string {:default individual-reader}))
-      (map (partial print-parentof-to-csv out-file))
-      (reduce +)
-      )))
+(defn create-errors-vector
+  []
+  (let [errors ()]
+    (doseq [item (keys @semantics-map)]
+      (conj errors (map-indexed vector item)))
+    (doseq [item errors]
+      (doseq [thing item]
+        (swap! errors-map assoc thing {:uuid uuid})))
+    )
+  )
 
-(defn edn->csv-pmap [edn-file csv-file]set
-  (with-open [out-file (io/writer csv-file)]
-    (safe-println out-file individuals-header-line)
-    (->>
-      (line-seq (io/reader edn-file))
-      ; Skip the first line because it's not an individual
-      (drop 1)
-      (pmap (fn [line]
-        (print-individual-to-csv out-file (edn/read-string {:default individual-reader} line))
-        1))
-      count
-      )))
+(defn print-errors-to-csv
+  [errors-file]
+  (doseq [item @errors-map]
+    (apply safe-println errors-file item))
+  )
 
-(defn edn->csv-reducers [edn-file csv-file]
-  (with-open [out-file (io/writer csv-file)]
-    (safe-println out-file individuals-header-line)
+
+
+
+
+
+(defn print-all
+  [parentOf-file individuals-file line]
+  (add-semantics-to-map line)
+  (print-parentOf-to-csv parentOf-file line)
+  (print-individual-to-csv individuals-file line)
+  (create-errors-vector)
+  )
+; (defn edn->csv-sequential [edn-file csv-file]
+;   (with-open [out-file (io/writer csv-file)]
+;     (safe-println out-file individuals-header-line)
+;     (->>
+;       (line-seq (io/reader edn-file))
+;       ; Skip the first line because it's not an individual
+;       (drop 1)
+;       (map (partial edn/read-string {:default individual-reader}))
+;       (map (partial print-parentOf-to-csv out-file))
+;       (reduce +)
+;       )))
+;
+; (defn edn->csv-pmap [edn-file csv-file]
+;   (with-open [out-file (io/writer csv-file)]
+;     (safe-println out-file individuals-header-line)
+;     (->>
+;       (line-seq (io/reader edn-file))
+;       ; Skip the first line because it's not an individual
+;       (drop 1)
+;       (pmap (fn [line]
+;         (print-individual-to-csv out-file (edn/read-string {:default individual-reader} line))
+;         1))
+;       count
+;       )))
+(defn build-csv-filename
+  [edn-filename file-name]
+  (str (fs/parent edn-filename)
+       "/"
+       (fs/base-name edn-filename ".edn")
+       (str "_reducers")
+       (str "_" file-name ".csv"))
+  )
+
+(defn edn->csv-reducers [edn-file]
+  (with-open [individuals-file (io/writer (build-csv-filename edn-file "Individuals"))
+              parentOf-file (io/writer (build-csv-filename edn-file "ParentOf"))
+              semantics-file (io/writer (build-csv-filename edn-file "Semantics"))
+              errors-file (io/writer (build-csv-filename edn-file "Errors"))]
+    (safe-println individuals-file individuals-header-line)
+    (safe-println parentOf-file parentOf-header-line)
+    (safe-println semantics-file semantics-header-line)
+    (safe-println errors-file errors-header-line)
     (->>
       (iota/seq edn-file)
       (r/map (partial edn/read-string {:default individual-reader}))
@@ -111,32 +158,21 @@
       ; to catch it. We could do that with `r/drop`, but that
       ; totally kills the parallelism. :-(
       (r/filter identity)
-      (r/map (partial print-semantics-to-csv out-file))
+      (r/map (partial print-all parentOf-file individuals-file))
       (r/fold +)
       )
-      (doseq [item @semantics-map]
-        (apply safe-println out-file item))
+      (print-semantics-to-csv semantics-file)
+      (print-errors-to-csv errors-file)
       ))
 
-(defn build-individual-csv-filename
-  [edn-filename strategy]
-  (str (fs/parent edn-filename)
-       "/"
-       (fs/base-name edn-filename ".edn")
-       (if strategy
-         (str "_" strategy)
-         "_sequential")
-       "_Individuals.csv"))
 
 (defn -main
   [edn-filename & [strategy]]
-  (let [individual-csv-file (build-individual-csv-filename edn-filename strategy)]
+  (let [individual-csv-file (build-csv-filename edn-filename strategy)]
     (time
       (condp = strategy
-        "sequential" (edn->csv-sequential edn-filename individual-csv-file)
-        "pmap" (edn->csv-pmap edn-filename individual-csv-file)
-        "reducers" (edn->csv-reducers edn-filename individual-csv-file)
-        (edn->csv-sequential edn-filename individual-csv-file))))
+        "reducers" (edn->csv-reducers edn-filename)
+        (edn->csv-reducers edn-filename))))
   ; Necessary to get threads spun up by `pmap` to shutdown so you get
   ; your prompt back right away when using `lein run`.
   (shutdown-agents))
