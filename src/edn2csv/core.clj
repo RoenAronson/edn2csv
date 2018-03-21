@@ -62,10 +62,11 @@
 (def errors-vector (atom []))
 (def errors-map (atom {}))
 
-(defn make-semantics-map
+(defn make-semantics-and-errors-map
   [line]
   (let [create-uuid (uuid)]
-  (swap! semantics-map assoc (get line :errors) {:total-error (get line :total-error) :uuid create-uuid})))
+    (swap! semantics-map assoc (get line :errors) {:total-error (get line :total-error) :uuid create-uuid}))
+  )
 
 (defn add-semantics-to-map
   [line]
@@ -78,25 +79,23 @@
     (apply safe-println semantics-file item))
   )
 
-(defn create-errors-vector
+
+(defn create-errors-map
   []
-  (let [errors ()]
-    (doseq [item (keys @semantics-map)]
-      (conj errors (map-indexed vector item)))
-    (doseq [item errors]
-      (doseq [thing item]
-        (swap! errors-map assoc thing {:uuid uuid})))
-    )
-  )
+  (doseq [item @semantics-map]
+    (let [error-vector [(key item) (:uuid item)]
+      (doseq [thing error-vector]
+        ())
+
+
+
+
+
 
 (defn print-errors-to-csv
   [errors-file]
-  (doseq [item @errors-map]
-    (apply safe-println errors-file item))
-  )
-
-
-
+  (doseq [item (create-errors-vector)]
+    ()))
 
 
 
